@@ -48,6 +48,12 @@ button{font:inherit;cursor:pointer}
 .m textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:12px monospace;margin:4px 0 10px;direction:ltr}
 .big{font-size:22px;font-weight:800}
 .pos{color:var(--ac)}.neg{color:var(--rd)}
+.hc{display:block;width:100%;text-align:right;background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:10px;color:var(--tx)}
+.hc .t{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:17px;margin-bottom:8px}
+.hc .t i{font-style:normal;color:var(--mu);font-size:20px}
+.hc .l{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:14px}
+.hc .l span{color:var(--mu)}.hc .l b{font-size:16px}
+.hc.main .big{font-size:24px}
 .lg{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;align-items:center;justify-content:center;padding:20px}
 .lg>div{width:100%;max-width:400px;background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:20px}
 .lg input{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit;margin:4px 0 10px;direction:ltr;text-align:left}
@@ -59,11 +65,12 @@ button{font:inherit;cursor:pointer}
 <body>
 <div class="w">
 <div class="r"><h1>💰 مصروفي</h1><div style="display:flex;align-items:center;gap:6px"><span id="st"></span><button class="g" onclick="bk()">نسخ احتياطي</button><button class="g" onclick="logout()">خروج</button></div></div>
+<div id="nav"></div>
 <div class="sum" id="sum"></div>
-<div class="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button><button id="t3" onclick="tab(3)">الديون</button><button id="t4" onclick="tab(4)">الحصالة</button><button id="t5" onclick="tab(5)">الأقساط</button></div>
+<div class="tabs" id="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button></div>
 <div id="main"></div>
 </div>
-<div class="end"><button onclick="endMonth()">إنهاء الشهر</button></div>
+<div class="end" id="endb"><button onclick="endMonth()">إنهاء الشهر</button></div>
 <div id="md"></div>
 <div class="lg" id="lg">
 <div id="pl">
@@ -93,7 +100,7 @@ button{font:inherit;cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-var S={inc:[],cats:[],debts:[],sav:[],ins:[]},T=2,open={};
+var S={inc:[],cats:[],debts:[],sav:[],ins:[]},T=0,open={};
 
 /* ====== Firebase: ألصق إعداداتك هنا (Project settings > Your apps) ====== */
 var firebaseConfig={
@@ -181,17 +188,26 @@ function ask(title,fields,cb){
   setTimeout(function(){var a=document.getElementById('f0');a&&a.focus()},50);
 }
 function cl(){document.getElementById('md').innerHTML=''}
-function tab(n){T=n;draw()}
+function tab(n){T=n;draw();window.scrollTo(0,0)}
 function draw(){
   var i=income(),s=spent(),r=i-s;
   document.getElementById('sum').innerHTML='<div><small>الدخل</small><b>'+f(i)+'</b></div><div><small>انصرف</small><b>'+f(s)+'</b></div><div><small>الباقي</small><b class="'+(r<0?'neg':'pos')+'">'+f(r)+'</b></div>';
   document.getElementById('t1').className=T==1?'on':'';
   document.getElementById('t2').className=T==2?'on':'';
-  document.getElementById('t3').className=T==3?'on':'';
-  document.getElementById('t4').className=T==4?'on':'';
-  document.getElementById('t5').className=T==5?'on':'';
+  var mon=T==1||T==2;
+  document.getElementById('sum').style.display=mon?'grid':'none';
+  document.getElementById('tabs').style.display=mon?'flex':'none';
+  document.getElementById('endb').style.display=mon?'block':'none';
+  document.body.style.paddingBottom=mon?'90px':'30px';
+  var nv='';
+  if(T!=0){
+    var ti={1:'المصروف الشهري',2:'المصروف الشهري',3:'الديون',4:'الحصالة',5:'الأقساط'}[T];
+    nv='<div class="r" style="margin-bottom:10px"><button class="g" onclick="tab(0)">→ الرئيسية</button><b style="font-size:18px">'+ti+'</b></div>';
+    if(T==3||T==5)nv+='<div class="mu" style="margin-bottom:10px">منفصلة عن المصروف الشهري، وما تتأثر بـ"إنهاء الشهر".</div>';
+  }
+  document.getElementById('nav').innerHTML=nv;
   var h='';
-  if(T==1){
+  if(T==0){h=homeHtml()}else if(T==1){
     S.inc.forEach(function(x){h+='<div class="c r"><div><b>'+e(x.n)+'</b><div class="mu">'+f(x.a)+'</div></div><span><button class="g" onclick="edInc(\''+x.id+'\')">تعديل</button> <button class="x" onclick="delInc(\''+x.id+'\')">حذف</button></span></div>'});
     h+='<button class="add" onclick="addInc()">+ إضافة مصدر دخل</button>';
   }else if(T==3){h=debtsHtml()}else if(T==4){h=savHtml()}else if(T==5){h=insHtml()}else{
@@ -218,6 +234,28 @@ function draw(){
   }
   document.getElementById('main').innerHTML=h;
 }
+function homeHtml(){
+  var i=income(),s=spent(),r=i-s;
+  var dm=0,dy=0;S.debts.forEach(function(d){if(d.t==='lo')dm+=dr(d);else dy+=dr(d)});
+  var mo=0,mi=0,ro=0;
+  S.ins.forEach(function(p){var l=p.c-ipaid(p);if(p.t==='on'){ro+=l*p.a;if(l>0)mo+=p.a}else{if(l>0)mi+=p.a}});
+  var st=S.sav.reduce(function(a,x){return a+sb(x)},0);
+  var h='';
+  h+='<button class="hc main" onclick="tab(2)"><div class="t"><span>🧾 المصروف الشهري</span><i>‹</i></div>'+
+    '<div class="l"><span>الباقي</span><b class="big '+(r<0?'neg':'pos')+'">'+f(r)+'</b></div>'+
+    '<div class="l"><span>الدخل</span><b>'+f(i)+'</b></div>'+
+    '<div class="l"><span>انصرف</span><b>'+f(s)+'</b></div></button>';
+  h+='<button class="hc" onclick="tab(3)"><div class="t"><span>🤝 الديون</span><i>‹</i></div>'+
+    '<div class="l"><span>أطلبهم</span><b class="pos">'+f(dm)+'</b></div>'+
+    '<div class="l"><span>يطلبوني</span><b class="neg">'+f(dy)+'</b></div></button>';
+  h+='<button class="hc" onclick="tab(5)"><div class="t"><span>📅 الأقساط</span><i>‹</i></div>'+
+    '<div class="l"><span>قسط شهري عليّ</span><b class="neg">'+f(mo)+'</b></div>'+
+    '<div class="l"><span>قسط شهري إلي</span><b class="pos">'+f(mi)+'</b></div>'+
+    '<div class="l"><span>المتبقي عليّ</span><b class="neg">'+f(ro)+'</b></div></button>';
+  h+='<button class="hc" onclick="tab(4)"><div class="t"><span>🐷 الحصالة</span><i>‹</i></div>'+
+    '<div class="l"><span>إجمالي المدخرات</span><b class="pos">'+f(st)+'</b></div></button>';
+  return h;
+}
 function addInc(){ask('مصدر دخل جديد',[['الاسم (مثلاً راتب)'],['المبلغ','n']],function(v){S.inc.push({id:id(),n:v[0],a:v[1]});save();draw()})}
 function delInc(i){if(confirm('حذف؟')){S.inc=S.inc.filter(function(x){return x.id!==i});save();draw()}}
 function addCat(){ask('قسم مصروف جديد',[['الاسم (مثلاً أكل)'],['المبلغ المخصص','n']],function(v){S.cats.push({id:id(),n:v[0],b:v[1],subs:[],ex:[]});save();draw()})}
@@ -233,9 +271,10 @@ function endMonth(){
   '<div class="r"><span>الدخل</span><span class="big">'+f(i)+'</span></div>'+
   '<div class="r"><span>انصرف</span><span class="big">'+f(s)+'</span></div>'+
   '<div class="r"><span>الباقي</span><span class="big '+(r<0?'neg':'pos')+'">'+f(r)+'</span></div><br>'+
+  '<div class="mu">إنهاء الشهر يخص المصروف فقط. الديون والأقساط والحصالة منفصلة وما تتصفّر.</div><br>'+
   '<button class="b" style="width:100%;padding:12px" onclick="newMonth()">بدء شهر جديد (يصفّر المصروف)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>';
 }
-function newMonth(){if(confirm('راح يتصفّر سجل المصروف وتبقى مصادر الدخل والأقسام. متأكد؟')){S.cats.forEach(function(c){c.ex=[]});save();cl();draw()}}
+function newMonth(){if(confirm('راح يتصفّر سجل المصروف فقط، وتبقى مصادر الدخل والأقسام والديون والأقساط والحصالة. متأكد؟')){S.cats.forEach(function(c){c.ex=[]});save();cl();draw()}}
 function edInc(i){var x=S.inc.filter(function(y){return y.id===i})[0];ask('تعديل مصدر الدخل',[['الاسم','t',true,x.n],['المبلغ','n',true,f(x.a)]],function(v){x.n=v[0];x.a=v[1];save();draw()})}
 function edCat(i){var c=cat(i);ask('تعديل القسم',[['الاسم','t',true,c.n],['المبلغ المخصص','n',true,f(c.b)]],function(v){c.n=v[0];c.b=v[1];save();draw()})}
 function edSub(ci,ui){var u=cat(ci).subs.filter(function(y){return y.id===ui})[0];ask('تعديل التقسيم',[['الاسم','t',true,u.n],['المبلغ','n',true,f(u.b)]],function(v){u.n=v[0];u.b=v[1];save();draw()})}
