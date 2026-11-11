@@ -48,22 +48,88 @@ button{font:inherit;cursor:pointer}
 .m textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:12px monospace;margin:4px 0 10px;direction:ltr}
 .big{font-size:22px;font-weight:800}
 .pos{color:var(--ac)}.neg{color:var(--rd)}
+.lg{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;align-items:center;justify-content:center;padding:20px}
+.lg>div{width:100%;max-width:400px;background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:20px}
+.lg input{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit;margin:4px 0 10px;direction:ltr;text-align:left}
+.lg label{font-size:13px;color:var(--mu)}
+#lerr{color:var(--rd);font-size:13px;min-height:18px;margin-bottom:8px}
+#st{font-size:12px;color:var(--mu)}
 </style>
 </head>
 <body>
 <div class="w">
-<div class="r"><h1>💰 مصروفي</h1><button class="g" onclick="bk()">نسخ احتياطي</button></div>
+<div class="r"><h1>💰 مصروفي</h1><div style="display:flex;align-items:center;gap:6px"><span id="st"></span><button class="g" onclick="bk()">نسخ احتياطي</button><button class="g" onclick="logout()">خروج</button></div></div>
 <div class="sum" id="sum"></div>
 <div class="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button><button id="t3" onclick="tab(3)">الديون</button><button id="t4" onclick="tab(4)">الحصالة</button><button id="t5" onclick="tab(5)">الأقساط</button></div>
 <div id="main"></div>
 </div>
 <div class="end"><button onclick="endMonth()">إنهاء الشهر</button></div>
 <div id="md"></div>
+<div class="lg" id="lg"><div>
+<h1 style="text-align:center">💰 مصروفي</h1>
+<label>الإيميل</label><input id="em" type="email" autocomplete="email">
+<label>كلمة المرور (6 أحرف أو أكثر)</label><input id="pw" type="password" autocomplete="current-password">
+<div id="lerr"></div>
+<button class="b" style="width:100%;padding:12px" onclick="doLogin()">تسجيل دخول</button><br><br>
+<button class="g" style="width:100%" onclick="doSignup()">إنشاء حساب جديد</button><br><br>
+<button class="x" style="width:100%" onclick="doReset()">نسيت كلمة المرور؟</button>
+</div></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-var S={inc:[],cats:[]},T=2,open={};
-try{var l=localStorage.getItem('masroof');if(l)S=JSON.parse(l)}catch(e){}
-if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];if(!S.ins)S.ins=[];
-function save(){try{localStorage.setItem('masroof',JSON.stringify(S))}catch(e){}}
+var S={inc:[],cats:[],debts:[],sav:[],ins:[]},T=2,open={};
+
+/* ====== Firebase: ألصق إعداداتك هنا (Project settings > Your apps) ====== */
+var firebaseConfig={
+  apiKey:"AIzaSyBXbSBBnvjIsVYt_e0TH1MUF0sHOlr9g-8",
+  authDomain:"masroof-dc498.firebaseapp.com",
+  projectId:"masroof-dc498",
+  storageBucket:"masroof-dc498.firebasestorage.app",
+  messagingSenderId:"942863794756",
+  appId:"1:942863794756:web:b0bae217641b7c57773211"
+};
+/* ====================================================================== */
+var USER=null,KEY='masroof',unsub=null,tm=null,first=true,auth,db;
+firebase.initializeApp(firebaseConfig);auth=firebase.auth();db=firebase.firestore();
+function norm(){if(!S.inc)S.inc=[];if(!S.cats)S.cats=[];if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];if(!S.ins)S.ins=[]}
+function setSt(t){var x=document.getElementById('st');if(x)x.textContent=t}
+function loadLocal(){var o=null;try{var l=localStorage.getItem(KEY);if(l)o=JSON.parse(l)}catch(e){}return o}
+function writeLocal(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){S.ts=Date.now();writeLocal();if(USER){setSt('⏳');clearTimeout(tm);tm=setTimeout(push,700)}}
+function push(){if(!USER)return;db.collection('users').doc(USER.uid).set({data:JSON.stringify(S),ts:S.ts||0}).then(function(){setSt('✓ محفوظ')}).catch(function(){setSt('⚠ ما انحفظ')})}
+function startSync(){
+  first=true;
+  unsub=db.collection('users').doc(USER.uid).onSnapshot(function(d){
+    if(d.metadata.hasPendingWrites)return;
+    var r=null;if(d.exists){try{r=JSON.parse(d.data().data)}catch(e){}}
+    if(!r){if(first){first=false;push()}return}
+    first=false;
+    if((r.ts||0)>(S.ts||0)){S=r;norm();writeLocal();draw();setSt('✓ محفوظ')}
+    else if((S.ts||0)>(r.ts||0)){push()}
+    else setSt('✓ محفوظ');
+  },function(){setSt('⚠ بدون اتصال')});
+}
+auth.onAuthStateChanged(function(u){
+  if(unsub){unsub();unsub=null}
+  if(u){
+    USER=u;KEY='masroof_'+u.uid;
+    var o=loadLocal();
+    if(!o){try{var lg=localStorage.getItem('masroof');if(lg){o=JSON.parse(lg);localStorage.removeItem('masroof')}}catch(e){}}
+    S=o||{inc:[],cats:[],debts:[],sav:[],ins:[]};norm();
+    document.getElementById('lg').style.display='none';
+    draw();setSt('⏳');startSync();
+  }else{
+    USER=null;S={inc:[],cats:[],debts:[],sav:[],ins:[]};setSt('');
+    document.getElementById('lg').style.display='flex';
+  }
+});
+function ferr(c){return({'auth/invalid-email':'الإيميل غير صحيح','auth/missing-password':'اكتب كلمة المرور','auth/weak-password':'كلمة المرور ضعيفة (6 أحرف على الأقل)','auth/email-already-in-use':'هذا الإيميل مسجّل من قبل، سجّل دخول','auth/invalid-credential':'الإيميل أو كلمة المرور غلط','auth/wrong-password':'الإيميل أو كلمة المرور غلط','auth/user-not-found':'الإيميل أو كلمة المرور غلط','auth/too-many-requests':'محاولات كثيرة، انتظر شوي وجرّب','auth/network-request-failed':'ما كو اتصال بالإنترنت'})[c]||('خطأ: '+c)}
+function cred(){return[document.getElementById('em').value.trim(),document.getElementById('pw').value]}
+function doLogin(){var c=cred();document.getElementById('lerr').textContent='';auth.signInWithEmailAndPassword(c[0],c[1]).catch(function(x){document.getElementById('lerr').textContent=ferr(x.code)})}
+function doSignup(){var c=cred();document.getElementById('lerr').textContent='';auth.createUserWithEmailAndPassword(c[0],c[1]).catch(function(x){document.getElementById('lerr').textContent=ferr(x.code)})}
+function doReset(){var m=document.getElementById('em').value.trim();if(!m){document.getElementById('lerr').textContent='اكتب الإيميل أول';return}auth.sendPasswordResetEmail(m).then(function(){document.getElementById('lerr').textContent='انبعث رابط إعادة التعيين لإيميلك'}).catch(function(x){document.getElementById('lerr').textContent=ferr(x.code)})}
+function logout(){if(confirm('تسجيل خروج؟')){clearTimeout(tm);if(USER&&S.ts)push();auth.signOut()}}
 function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function f(n){var s=String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g,',');return (n<0?'-':'')+s}
 function fm(el){var d=el.value.replace(/[٠-٩]/g,function(c){return c.charCodeAt(0)-1632}).replace(/\D/g,'');el.value=d?d.replace(/\B(?=(\d{3})+(?!\d))/g,','):''}
@@ -215,7 +281,6 @@ function delDebt(i){if(confirm('حذف هذا الدين وسجله؟')){S.debts
 function bk(){document.getElementById('md').innerHTML='<div class="m" onclick="if(event.target===this)cl()"><div><b>نسخ احتياطي ونقل البيانات</b><br><br><label>1) تصدير: انسخ الكود وابعثه لنفسك (واتساب/تلغرام)</label><textarea id="ex" readonly rows="3">'+e(JSON.stringify(S))+'</textarea><button class="b" style="width:100%;padding:12px" onclick="cp()">نسخ الكود</button><br><br><label>2) استيراد: الصق الكود هنا</label><textarea id="im" rows="3"></textarea><button class="b" style="width:100%;padding:12px" onclick="imp()">استيراد (يستبدل البيانات الحالية)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>'}
 function cp(){var t=document.getElementById('ex');t.select();t.setSelectionRange(0,t.value.length);try{navigator.clipboard.writeText(t.value)}catch(x){try{document.execCommand('copy')}catch(y){}}alert('تم النسخ')}
 function imp(){try{var o=JSON.parse(document.getElementById('im').value.trim());if(!o||!Array.isArray(o.inc)||!Array.isArray(o.cats))throw 0;if(confirm('راح تنستبدل البيانات الحالية. متأكد؟')){S=o;if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];if(!S.ins)S.ins=[];save();cl();draw()}}catch(x){alert('الكود غير صحيح')}}
-draw();
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){})}catch(x){}
 </script>
 </body>
