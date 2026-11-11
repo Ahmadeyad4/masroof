@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مصروفي</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--tx:#1d2420;--mu:#6b746e;--ac:#0f7b5f;--ac2:#e3f3ee;--rd:#c0392b;--bd:#e4e2da;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141816;--card:#1e2421;--tx:#eef2ef;--mu:#98a39d;--ac:#3cc29b;--ac2:#1f332c;--rd:#ff7b6b;--bd:#2c3430;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141816;--card:#1e2421;--tx:#eef2ef;--mu:#98a39d;--ac:#3cc29b;--ac2:#1f332c;--rd:#ff7b6b;--bd:#2c3430;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;padding-bottom:90px}
+.w{max-width:560px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:6px 0 12px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.sum div{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:10px;text-align:center}
+.sum small{display:block;color:var(--mu);font-size:12px}
+.sum b{font-size:16px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:12px;font:inherit;font-weight:600}
+.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:12px;margin-bottom:10px}
+.r{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mu{color:var(--mu);font-size:13px}
+.bar{height:8px;background:var(--ac2);border-radius:6px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--ac)}
+.bar i.o{background:var(--rd)}
+button{font:inherit;cursor:pointer}
+.b{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:7px 12px;font-size:14px}
+.g{background:transparent;color:var(--ac);border:1px solid var(--bd);border-radius:10px;padding:6px 10px;font-size:13px}
+.x{background:none;border:0;color:var(--rd);font-size:13px}
+.sub{border-top:1px dashed var(--bd);padding:8px 0}
+.add{width:100%;padding:12px;border:1.5px dashed var(--ac);background:transparent;color:var(--ac);border-radius:14px;font-weight:600}
+.end{position:fixed;inset:auto 0 0 0;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--bd)}
+.end button{display:block;width:100%;max-width:532px;margin:auto;padding:14px;border:0;border-radius:14px;background:var(--tx);color:var(--bg);font-weight:700;font-size:16px}
+.m{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:9}
+.m>div{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.m input{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit;margin:4px 0 10px}
+.m label{font-size:13px;color:var(--mu)}
+.big{font-size:22px;font-weight:800}
+.pos{color:var(--ac)}.neg{color:var(--rd)}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>💰 مصروفي</h1>
+<div class="sum" id="sum"></div>
+<div class="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button></div>
+<div id="main"></div>
+</div>
+<div class="end"><button onclick="endMonth()">إنهاء الشهر</button></div>
+<div id="md"></div>
+<script>
+var S={inc:[],cats:[]},T=2,open={};
+try{var l=localStorage.getItem('masroof');if(l)S=JSON.parse(l)}catch(e){}
+function save(){try{localStorage.setItem('masroof',JSON.stringify(S))}catch(e){}}
+function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function f(n){var s=String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g,',');return (n<0?'-':'')+s}
+function fm(el){var d=el.value.replace(/[٠-٩]/g,function(c){return c.charCodeAt(0)-1632}).replace(/\D/g,'');el.value=d?d.replace(/\B(?=(\d{3})+(?!\d))/g,','):''}
+function e(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function tot(c,s){var t=0;c.ex.forEach(function(x){if(s===undefined||x.s===s)t+=x.a});return t}
+function income(){return S.inc.reduce(function(a,x){return a+x.a},0)}
+function spent(){return S.cats.reduce(function(a,c){return a+tot(c)},0)}
+function planned(){return S.cats.reduce(function(a,c){return a+c.b},0)}
+function ask(title,fields,cb){
+  var h='<div class="m" onclick="if(event.target===this)cl()"><div><b>'+title+'</b><br><br>';
+  fields.forEach(function(x,i){h+='<label>'+x[0]+'</label><input id="f'+i+'" '+(x[1]==='n'?'type="text" inputmode="numeric" oninput="fm(this)"':'type="text"')+'>'});
+  h+='<div class="r"><button class="b" style="flex:1;padding:12px" id="ok">حفظ</button><button class="g" onclick="cl()">إلغاء</button></div></div></div>';
+  document.getElementById('md').innerHTML=h;
+  document.getElementById('ok').onclick=function(){
+    var v=fields.map(function(x,i){var r=document.getElementById('f'+i).value.trim();return x[1]==='n'?parseFloat(r.replace(/,/g,'')):r});
+    for(var i=0;i<v.length;i++){if(fields[i][2]!==false&&(fields[i][1]==='n'?!(v[i]>0):!v[i]))return}
+    cb(v);cl();
+  };
+  setTimeout(function(){var a=document.getElementById('f0');a&&a.focus()},50);
+}
+function cl(){document.getElementById('md').innerHTML=''}
+function tab(n){T=n;draw()}
+function draw(){
+  var i=income(),s=spent(),r=i-s;
+  document.getElementById('sum').innerHTML='<div><small>الدخل</small><b>'+f(i)+'</b></div><div><small>انصرف</small><b>'+f(s)+'</b></div><div><small>الباقي</small><b class="'+(r<0?'neg':'pos')+'">'+f(r)+'</b></div>';
+  document.getElementById('t1').className=T==1?'on':'';
+  document.getElementById('t2').className=T==2?'on':'';
+  var h='';
+  if(T==1){
+    S.inc.forEach(function(x){h+='<div class="c r"><div><b>'+e(x.n)+'</b><div class="mu">'+f(x.a)+'</div></div><button class="x" onclick="delInc(\''+x.id+'\')">حذف</button></div>'});
+    h+='<button class="add" onclick="addInc()">+ إضافة مصدر دخل</button>';
+  }else{
+    var p=planned();
+    h+='<div class="mu" style="margin-bottom:8px">المخطط له: '+f(p)+' من '+f(i)+' (الدخل). الخصم من الباقي يصير فقط لما تسجل "صرفت".</div>';
+    S.cats.forEach(function(c){
+      var t=tot(c),pc=c.b?Math.min(100,t/c.b*100):0;
+      h+='<div class="c"><div class="r"><b>'+e(c.n)+'</b><span class="mu">'+f(t)+' / '+f(c.b)+'</span></div>';
+      h+='<div class="bar"><i class="'+(t>c.b?'o':'')+'" style="width:'+pc+'%"></i></div>';
+      h+='<div class="r"><span class="mu">المتبقي: <b class="'+(c.b-t<0?'neg':'')+'">'+f(c.b-t)+'</b></span><span><button class="b" onclick="spend(\''+c.id+'\',\'\')">صرفت</button> <button class="g" onclick="addSub(\''+c.id+'\')">+ تقسيم</button></span></div>';
+      c.subs.forEach(function(u){
+        var st=tot(c,u.id);
+        h+='<div class="sub"><div class="r"><span>'+e(u.n)+' <span class="mu">'+f(st)+' / '+f(u.b)+'</span></span><button class="b" onclick="spend(\''+c.id+'\',\''+u.id+'\')">صرفت</button></div>';
+        h+='<div class="bar"><i class="'+(st>u.b?'o':'')+'" style="width:'+(u.b?Math.min(100,st/u.b*100):0)+'%"></i></div>';
+        h+='<div class="mu">المتبقي: <span class="'+(u.b-st<0?'neg':'')+'">'+f(u.b-st)+'</span> <button class="x" onclick="delSub(\''+c.id+'\',\''+u.id+'\')">حذف التقسيم</button></div></div>';
+      });
+      h+='<div class="r" style="margin-top:6px"><button class="g" onclick="open[\''+c.id+'\']=!open[\''+c.id+'\'];draw()">السجل ('+c.ex.length+')</button><button class="x" onclick="delCat(\''+c.id+'\')">حذف القسم</button></div>';
+      if(open[c.id]){c.ex.slice().reverse().forEach(function(x){
+        var sn='';c.subs.forEach(function(u){if(u.id===x.s)sn=' · '+e(u.n)});
+        h+='<div class="sub r"><span>'+f(x.a)+sn+(x.t?' <span class="mu">'+e(x.t)+'</span>':'')+'</span><button class="x" onclick="delEx(\''+c.id+'\',\''+x.id+'\')">تراجع</button></div>'})}
+      h+='</div>';
+    });
+    h+='<button class="add" onclick="addCat()">+ إضافة قسم مصروف</button>';
+  }
+  document.getElementById('main').innerHTML=h;
+}
+function addInc(){ask('مصدر دخل جديد',[['الاسم (مثلاً راتب)'],['المبلغ','n']],function(v){S.inc.push({id:id(),n:v[0],a:v[1]});save();draw()})}
+function delInc(i){if(confirm('حذف؟')){S.inc=S.inc.filter(function(x){return x.id!==i});save();draw()}}
+function addCat(){ask('قسم مصروف جديد',[['الاسم (مثلاً أكل)'],['المبلغ المخصص','n']],function(v){S.cats.push({id:id(),n:v[0],b:v[1],subs:[],ex:[]});save();draw()})}
+function cat(i){return S.cats.filter(function(c){return c.id===i})[0]}
+function delCat(i){if(confirm('حذف القسم وسجله؟')){S.cats=S.cats.filter(function(c){return c.id!==i});save();draw()}}
+function addSub(i){ask('تقسيم داخل القسم',[['الاسم (مثلاً فواكه)'],['المبلغ','n']],function(v){cat(i).subs.push({id:id(),n:v[0],b:v[1]});save();draw()})}
+function delSub(c,u){if(confirm('حذف التقسيم؟ المصروف المسجل عليه يرجع للقسم العام.')){var k=cat(c);k.subs=k.subs.filter(function(x){return x.id!==u});k.ex.forEach(function(x){if(x.s===u)x.s=''});save();draw()}}
+function spend(c,u){ask('تم الصرف',[['المبلغ','n'],['ملاحظة (اختياري)','t',false]],function(v){cat(c).ex.push({id:id(),a:v[0],s:u,t:v[1]});save();draw()})}
+function delEx(c,x){var k=cat(c);k.ex=k.ex.filter(function(y){return y.id!==x});save();draw()}
+function endMonth(){
+  var i=income(),s=spent(),r=i-s;
+  document.getElementById('md').innerHTML='<div class="m" onclick="if(event.target===this)cl()"><div><b>ملخص الشهر</b><br><br>'+
+  '<div class="r"><span>الدخل</span><span class="big">'+f(i)+'</span></div>'+
+  '<div class="r"><span>انصرف</span><span class="big">'+f(s)+'</span></div>'+
+  '<div class="r"><span>الباقي</span><span class="big '+(r<0?'neg':'pos')+'">'+f(r)+'</span></div><br>'+
+  '<button class="b" style="width:100%;padding:12px" onclick="newMonth()">بدء شهر جديد (يصفّر المصروف)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>';
+}
+function newMonth(){if(confirm('راح يتصفّر سجل المصروف وتبقى مصادر الدخل والأقسام. متأكد؟')){S.cats.forEach(function(c){c.ex=[]});save();cl();draw()}}
+draw();
+</script>
+</body>
+</html>
