@@ -37,13 +37,14 @@ button{font:inherit;cursor:pointer}
 .m>div{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
 .m input{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit;margin:4px 0 10px}
 .m label{font-size:13px;color:var(--mu)}
+.m textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:12px monospace;margin:4px 0 10px;direction:ltr}
 .big{font-size:22px;font-weight:800}
 .pos{color:var(--ac)}.neg{color:var(--rd)}
 </style>
 </head>
 <body>
 <div class="w">
-<h1>💰 مصروفي</h1>
+<div class="r"><h1>💰 مصروفي</h1><button class="g" onclick="bk()">نسخ احتياطي</button></div>
 <div class="sum" id="sum"></div>
 <div class="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button></div>
 <div id="main"></div>
@@ -127,6 +128,9 @@ function endMonth(){
   '<button class="b" style="width:100%;padding:12px" onclick="newMonth()">بدء شهر جديد (يصفّر المصروف)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>';
 }
 function newMonth(){if(confirm('راح يتصفّر سجل المصروف وتبقى مصادر الدخل والأقسام. متأكد؟')){S.cats.forEach(function(c){c.ex=[]});save();cl();draw()}}
+function bk(){document.getElementById('md').innerHTML='<div class="m" onclick="if(event.target===this)cl()"><div><b>نسخ احتياطي ونقل البيانات</b><br><br><label>1) تصدير: انسخ الكود وابعثه لنفسك (واتساب/تلغرام)</label><textarea id="ex" readonly rows="3">'+e(JSON.stringify(S))+'</textarea><button class="b" style="width:100%;padding:12px" onclick="cp()">نسخ الكود</button><br><br><label>2) استيراد: الصق الكود هنا</label><textarea id="im" rows="3"></textarea><button class="b" style="width:100%;padding:12px" onclick="imp()">استيراد (يستبدل البيانات الحالية)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>'}
+function cp(){var t=document.getElementById('ex');t.select();t.setSelectionRange(0,t.value.length);try{navigator.clipboard.writeText(t.value)}catch(x){try{document.execCommand('copy')}catch(y){}}alert('تم النسخ')}
+function imp(){try{var o=JSON.parse(document.getElementById('im').value.trim());if(!o||!Array.isArray(o.inc)||!Array.isArray(o.cats))throw 0;if(confirm('راح تنستبدل البيانات الحالية. متأكد؟')){S=o;save();cl();draw()}}catch(x){alert('الكود غير صحيح')}}
 draw();
 </script>
 </body>
