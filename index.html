@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>مصروفي</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f7b5f">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#f6f5f1;--card:#fff;--tx:#1d2420;--mu:#6b746e;--ac:#0f7b5f;--ac2:#e3f3ee;--rd:#c0392b;--bd:#e4e2da;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141816;--card:#1e2421;--tx:#eef2ef;--mu:#98a39d;--ac:#3cc29b;--ac2:#1f332c;--rd:#ff7b6b;--bd:#2c3430;color-scheme:dark}}
@@ -67,7 +71,7 @@ function spent(){return S.cats.reduce(function(a,c){return a+tot(c)},0)}
 function planned(){return S.cats.reduce(function(a,c){return a+c.b},0)}
 function ask(title,fields,cb){
   var h='<div class="m" onclick="if(event.target===this)cl()"><div><b>'+title+'</b><br><br>';
-  fields.forEach(function(x,i){h+='<label>'+x[0]+'</label><input id="f'+i+'" '+(x[1]==='n'?'type="text" inputmode="numeric" oninput="fm(this)"':'type="text"')+'>'});
+  fields.forEach(function(x,i){h+='<label>'+x[0]+'</label><input id="f'+i+'" '+(x[1]==='n'?'type="text" inputmode="numeric" oninput="fm(this)"':'type="text"')+(x[3]!==undefined?' value="'+e(String(x[3]))+'"':'')+'>'});
   h+='<div class="r"><button class="b" style="flex:1;padding:12px" id="ok">حفظ</button><button class="g" onclick="cl()">إلغاء</button></div></div></div>';
   document.getElementById('md').innerHTML=h;
   document.getElementById('ok').onclick=function(){
@@ -88,7 +92,7 @@ function draw(){
   document.getElementById('t4').className=T==4?'on':'';
   var h='';
   if(T==1){
-    S.inc.forEach(function(x){h+='<div class="c r"><div><b>'+e(x.n)+'</b><div class="mu">'+f(x.a)+'</div></div><button class="x" onclick="delInc(\''+x.id+'\')">حذف</button></div>'});
+    S.inc.forEach(function(x){h+='<div class="c r"><div><b>'+e(x.n)+'</b><div class="mu">'+f(x.a)+'</div></div><span><button class="g" onclick="edInc(\''+x.id+'\')">تعديل</button> <button class="x" onclick="delInc(\''+x.id+'\')">حذف</button></span></div>'});
     h+='<button class="add" onclick="addInc()">+ إضافة مصدر دخل</button>';
   }else if(T==3){h=debtsHtml()}else if(T==4){h=savHtml()}else{
     var p=planned();
@@ -102,9 +106,9 @@ function draw(){
         var st=tot(c,u.id);
         h+='<div class="sub"><div class="r"><span>'+e(u.n)+' <span class="mu">'+f(st)+' / '+f(u.b)+'</span></span><button class="b" onclick="spend(\''+c.id+'\',\''+u.id+'\')">صرفت</button></div>';
         h+='<div class="bar"><i class="'+(st>u.b?'o':'')+'" style="width:'+(u.b?Math.min(100,st/u.b*100):0)+'%"></i></div>';
-        h+='<div class="mu">المتبقي: <span class="'+(u.b-st<0?'neg':'')+'">'+f(u.b-st)+'</span> <button class="x" onclick="delSub(\''+c.id+'\',\''+u.id+'\')">حذف التقسيم</button></div></div>';
+        h+='<div class="mu">المتبقي: <span class="'+(u.b-st<0?'neg':'')+'">'+f(u.b-st)+'</span> <button class="x" style="color:var(--ac)" onclick="edSub(\''+c.id+'\',\''+u.id+'\')">تعديل</button> <button class="x" onclick="delSub(\''+c.id+'\',\''+u.id+'\')">حذف التقسيم</button></div></div>';
       });
-      h+='<div class="r" style="margin-top:6px"><button class="g" onclick="open[\''+c.id+'\']=!open[\''+c.id+'\'];draw()">السجل ('+c.ex.length+')</button><button class="x" onclick="delCat(\''+c.id+'\')">حذف القسم</button></div>';
+      h+='<div class="r" style="margin-top:6px"><button class="g" onclick="open[\''+c.id+'\']=!open[\''+c.id+'\'];draw()">السجل ('+c.ex.length+')</button><span><button class="g" onclick="edCat(\''+c.id+'\')">تعديل</button> <button class="x" onclick="delCat(\''+c.id+'\')">حذف القسم</button></span></div>';
       if(open[c.id]){c.ex.slice().reverse().forEach(function(x){
         var sn='';c.subs.forEach(function(u){if(u.id===x.s)sn=' · '+e(u.n)});
         h+='<div class="sub r"><span>'+f(x.a)+sn+(x.t?' <span class="mu">'+e(x.t)+'</span>':'')+'</span><button class="x" onclick="delEx(\''+c.id+'\',\''+x.id+'\')">تراجع</button></div>'})}
@@ -132,6 +136,11 @@ function endMonth(){
   '<button class="b" style="width:100%;padding:12px" onclick="newMonth()">بدء شهر جديد (يصفّر المصروف)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>';
 }
 function newMonth(){if(confirm('راح يتصفّر سجل المصروف وتبقى مصادر الدخل والأقسام. متأكد؟')){S.cats.forEach(function(c){c.ex=[]});save();cl();draw()}}
+function edInc(i){var x=S.inc.filter(function(y){return y.id===i})[0];ask('تعديل مصدر الدخل',[['الاسم','t',true,x.n],['المبلغ','n',true,f(x.a)]],function(v){x.n=v[0];x.a=v[1];save();draw()})}
+function edCat(i){var c=cat(i);ask('تعديل القسم',[['الاسم','t',true,c.n],['المبلغ المخصص','n',true,f(c.b)]],function(v){c.n=v[0];c.b=v[1];save();draw()})}
+function edSub(ci,ui){var u=cat(ci).subs.filter(function(y){return y.id===ui})[0];ask('تعديل التقسيم',[['الاسم','t',true,u.n],['المبلغ','n',true,f(u.b)]],function(v){u.n=v[0];u.b=v[1];save();draw()})}
+function edDebt(i){var d=dbt(i);ask('تعديل الدين',[['اسم الشخص','t',true,d.n],['المبلغ','n',true,f(d.a)],['ملاحظة (اختياري)','t',false,d.note||'']],function(v){d.n=v[0];d.a=v[1];d.note=v[2];save();draw()})}
+function edSav(i){var s=sv(i);ask('تعديل الحصالة',[['الاسم','t',true,s.n],['الهدف (اختياري)','n',false,s.g?f(s.g):'']],function(v){s.n=v[0];s.g=v[1]||0;save();draw()})}
 function sb(s){return s.tx.reduce(function(a,x){return a+(x.k==='in'?x.a:-x.a)},0)}
 function savHtml(){
   var t=S.sav.reduce(function(a,s){return a+sb(s)},0);
@@ -140,7 +149,7 @@ function savHtml(){
     var b=sb(s);
     h+='<div class="c"><div class="r"><b>🐷 '+e(s.n)+'</b><span class="big pos">'+f(b)+'</span></div>';
     if(s.g)h+='<div class="bar"><i style="width:'+Math.max(0,Math.min(100,b/s.g*100))+'%"></i></div><div class="mu">الهدف: '+f(s.g)+(b>=s.g?' ✓ تحقق الهدف':' · باقي '+f(s.g-b))+'</div>';
-    h+='<div class="r" style="margin-top:8px"><span><button class="b" onclick="savTx(\''+s.id+'\',\'in\')">إيداع</button> <button class="g" onclick="savTx(\''+s.id+'\',\'out\')">سحب</button> <button class="g" onclick="open[\''+s.id+'\']=!open[\''+s.id+'\'];draw()">السجل ('+s.tx.length+')</button></span><button class="x" onclick="delSav(\''+s.id+'\')">حذف</button></div>';
+    h+='<div class="r" style="margin-top:8px"><span><button class="b" onclick="savTx(\''+s.id+'\',\'in\')">إيداع</button> <button class="g" onclick="savTx(\''+s.id+'\',\'out\')">سحب</button> <button class="g" onclick="open[\''+s.id+'\']=!open[\''+s.id+'\'];draw()">السجل ('+s.tx.length+')</button></span><span><button class="g" onclick="edSav(\''+s.id+'\')">تعديل</button> <button class="x" onclick="delSav(\''+s.id+'\')">حذف</button></span></div>';
     if(open[s.id])s.tx.slice().reverse().forEach(function(x){h+='<div class="sub r"><span>'+(x.k==='in'?'＋ ':'－ ')+f(x.a)+'</span><button class="x" onclick="delTx(\''+s.id+'\',\''+x.id+'\')">تراجع</button></div>'});
     h+='</div>';
   });
@@ -162,7 +171,7 @@ function debtsHtml(){
     if(d.note)h+='<div class="mu">'+e(d.note)+'</div>';
     h+='<div class="bar"><i class="'+(lo?'':'o')+'" style="width:'+(d.a?Math.min(100,p/d.a*100):0)+'%"></i></div>';
     h+='<div class="r"><span class="mu">'+(lo?'استلمت':'سددت')+': '+f(p)+' من '+f(d.a)+'</span><b class="'+(r<=0?'pos':(lo?'pos':'neg'))+'">'+(r<=0?'✓ منتهي':'المتبقي '+f(r))+'</b></div>';
-    h+='<div class="r" style="margin-top:8px"><span>'+(r>0?'<button class="b" onclick="payDebt(\''+d.id+'\')">'+(lo?'استلمت دفعة':'سددت دفعة')+'</button> ':'')+'<button class="g" onclick="open[\''+d.id+'\']=!open[\''+d.id+'\'];draw()">السجل ('+d.pay.length+')</button></span><button class="x" onclick="delDebt(\''+d.id+'\')">حذف</button></div>';
+    h+='<div class="r" style="margin-top:8px"><span>'+(r>0?'<button class="b" onclick="payDebt(\''+d.id+'\')">'+(lo?'استلمت دفعة':'سددت دفعة')+'</button> ':'')+'<button class="g" onclick="open[\''+d.id+'\']=!open[\''+d.id+'\'];draw()">السجل ('+d.pay.length+')</button></span><span><button class="g" onclick="edDebt(\''+d.id+'\')">تعديل</button> <button class="x" onclick="delDebt(\''+d.id+'\')">حذف</button></span></div>';
     if(open[d.id])d.pay.slice().reverse().forEach(function(x){h+='<div class="sub r"><span>'+f(x.a)+'</span><button class="x" onclick="delPay(\''+d.id+'\',\''+x.id+'\')">تراجع</button></div>'});
     h+='</div>';
   });
@@ -178,6 +187,7 @@ function bk(){document.getElementById('md').innerHTML='<div class="m" onclick="i
 function cp(){var t=document.getElementById('ex');t.select();t.setSelectionRange(0,t.value.length);try{navigator.clipboard.writeText(t.value)}catch(x){try{document.execCommand('copy')}catch(y){}}alert('تم النسخ')}
 function imp(){try{var o=JSON.parse(document.getElementById('im').value.trim());if(!o||!Array.isArray(o.inc)||!Array.isArray(o.cats))throw 0;if(confirm('راح تنستبدل البيانات الحالية. متأكد؟')){S=o;if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];save();cl();draw()}}catch(x){alert('الكود غير صحيح')}}
 draw();
+try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){})}catch(x){}
 </script>
 </body>
 </html>
