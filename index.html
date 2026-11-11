@@ -22,7 +22,10 @@ h1{font-size:20px;margin:6px 0 12px}
 .sum b{font-size:16px}
 .tabs{display:flex;gap:6px;margin-bottom:12px}
 .tabs button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:12px;font:inherit;font-weight:600}
-.tabs button{padding:10px 2px;font-size:14px}
+.tabs{gap:4px}.tabs button{padding:10px 1px;font-size:13px}
+.chs{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.ch{min-width:36px;padding:6px 0;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;font-size:13px}
+.ch.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .c{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:12px;margin-bottom:10px}
 .r{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -51,7 +54,7 @@ button{font:inherit;cursor:pointer}
 <div class="w">
 <div class="r"><h1>💰 مصروفي</h1><button class="g" onclick="bk()">نسخ احتياطي</button></div>
 <div class="sum" id="sum"></div>
-<div class="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button><button id="t3" onclick="tab(3)">الديون</button><button id="t4" onclick="tab(4)">الحصالة</button></div>
+<div class="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button><button id="t3" onclick="tab(3)">الديون</button><button id="t4" onclick="tab(4)">الحصالة</button><button id="t5" onclick="tab(5)">الأقساط</button></div>
 <div id="main"></div>
 </div>
 <div class="end"><button onclick="endMonth()">إنهاء الشهر</button></div>
@@ -59,7 +62,7 @@ button{font:inherit;cursor:pointer}
 <script>
 var S={inc:[],cats:[]},T=2,open={};
 try{var l=localStorage.getItem('masroof');if(l)S=JSON.parse(l)}catch(e){}
-if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];
+if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];if(!S.ins)S.ins=[];
 function save(){try{localStorage.setItem('masroof',JSON.stringify(S))}catch(e){}}
 function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function f(n){var s=String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g,',');return (n<0?'-':'')+s}
@@ -90,11 +93,12 @@ function draw(){
   document.getElementById('t2').className=T==2?'on':'';
   document.getElementById('t3').className=T==3?'on':'';
   document.getElementById('t4').className=T==4?'on':'';
+  document.getElementById('t5').className=T==5?'on':'';
   var h='';
   if(T==1){
     S.inc.forEach(function(x){h+='<div class="c r"><div><b>'+e(x.n)+'</b><div class="mu">'+f(x.a)+'</div></div><span><button class="g" onclick="edInc(\''+x.id+'\')">تعديل</button> <button class="x" onclick="delInc(\''+x.id+'\')">حذف</button></span></div>'});
     h+='<button class="add" onclick="addInc()">+ إضافة مصدر دخل</button>';
-  }else if(T==3){h=debtsHtml()}else if(T==4){h=savHtml()}else{
+  }else if(T==3){h=debtsHtml()}else if(T==4){h=savHtml()}else if(T==5){h=insHtml()}else{
     var p=planned();
     h+='<div class="mu" style="margin-bottom:8px">المخطط له: '+f(p)+' من '+f(i)+' (الدخل). الخصم من الباقي يصير فقط لما تسجل "صرفت".</div>';
     S.cats.forEach(function(c){
@@ -141,6 +145,31 @@ function edCat(i){var c=cat(i);ask('تعديل القسم',[['الاسم','t',tr
 function edSub(ci,ui){var u=cat(ci).subs.filter(function(y){return y.id===ui})[0];ask('تعديل التقسيم',[['الاسم','t',true,u.n],['المبلغ','n',true,f(u.b)]],function(v){u.n=v[0];u.b=v[1];save();draw()})}
 function edDebt(i){var d=dbt(i);ask('تعديل الدين',[['اسم الشخص','t',true,d.n],['المبلغ','n',true,f(d.a)],['ملاحظة (اختياري)','t',false,d.note||'']],function(v){d.n=v[0];d.a=v[1];d.note=v[2];save();draw()})}
 function edSav(i){var s=sv(i);ask('تعديل الحصالة',[['الاسم','t',true,s.n],['الهدف (اختياري)','n',false,s.g?f(s.g):'']],function(v){s.n=v[0];s.g=v[1]||0;save();draw()})}
+function ipaid(p){return p.paid.filter(Boolean).length}
+function pin(i){return S.ins.filter(function(p){return p.id===i})[0]}
+function insHtml(){
+  var mo=0,mi=0,ro=0,ri=0;
+  S.ins.forEach(function(p){var l=p.c-ipaid(p);if(p.t==='on'){ro+=l*p.a;if(l>0)mo+=p.a}else{ri+=l*p.a;if(l>0)mi+=p.a}});
+  var h='<div class="sum" style="grid-template-columns:1fr 1fr"><div><small>قسط شهري عليّ</small><b class="neg">'+f(mo)+'</b></div><div><small>قسط شهري إلي</small><b class="pos">'+f(mi)+'</b></div><div><small>المتبقي عليّ</small><b class="neg">'+f(ro)+'</b></div><div><small>المتبقي إلي</small><b class="pos">'+f(ri)+'</b></div></div>';
+  S.ins.forEach(function(p){
+    var k=ipaid(p),on=p.t==='on',l=p.c-k;
+    h+='<div class="c"><div class="r"><b>'+e(p.n)+'</b><span class="mu">'+(on?'عليّ':'إلي')+'</span></div>';
+    if(p.note)h+='<div class="mu">'+e(p.note)+'</div>';
+    h+='<div class="bar"><i style="width:'+(p.c?k/p.c*100:0)+'%"></i></div>';
+    h+='<div class="r"><span class="mu">'+(on?'دفعت ':'استلمت ')+k+' من '+p.c+' · القسط '+f(p.a)+'</span><b class="'+(l<=0?'pos':(on?'neg':'pos'))+'">'+(l<=0?'✓ منتهي':'المتبقي '+f(l*p.a))+'</b></div>';
+    h+='<div class="chs">';
+    for(var i=0;i<p.c;i++)h+='<button class="ch'+(p.paid[i]?' on':'')+'" onclick="togIns(\''+p.id+'\','+i+')">'+(i+1)+'</button>';
+    h+='</div><div class="mu" style="margin-top:6px">اضغط على رقم القسط لتأشيره '+(on?'مدفوع':'مستلم')+'، واضغط عليه ثانية للتراجع.</div>';
+    h+='<div class="r" style="margin-top:6px"><span></span><span><button class="g" onclick="edIns(\''+p.id+'\')">تعديل</button> <button class="x" onclick="delIns(\''+p.id+'\')">حذف</button></span></div></div>';
+  });
+  h+='<button class="add" style="margin-bottom:8px" onclick="addIns(\'on\')">+ قسط عليّ (أدفعه)</button><button class="add" onclick="addIns(\'lo\')">+ قسط إلي (أستلمه)</button>';
+  return h;
+}
+function mkPaid(c,old){var a=[];for(var i=0;i<c;i++)a.push(old&&old[i]?true:false);return a}
+function addIns(t){ask(t==='on'?'قسط عليّ':'قسط إلي',[['الاسم (مثلاً سيارة، فلان)'],['مبلغ القسط','n'],['عدد الأقساط','n'],['ملاحظة (اختياري)','t',false]],function(v){var c=Math.min(120,Math.round(v[2]));S.ins.push({id:id(),n:v[0],a:v[1],c:c,t:t,note:v[3],paid:mkPaid(c)});save();draw()})}
+function togIns(i,j){var p=pin(i);p.paid[j]=!p.paid[j];save();draw()}
+function edIns(i){var p=pin(i);ask('تعديل القسط',[['الاسم','t',true,p.n],['مبلغ القسط','n',true,f(p.a)],['عدد الأقساط','n',true,p.c],['ملاحظة (اختياري)','t',false,p.note||'']],function(v){var c=Math.min(120,Math.round(v[2]));p.n=v[0];p.a=v[1];p.paid=mkPaid(c,p.paid);p.c=c;p.note=v[3];save();draw()})}
+function delIns(i){if(confirm('حذف هذا القسط وسجله؟')){S.ins=S.ins.filter(function(p){return p.id!==i});save();draw()}}
 function sb(s){return s.tx.reduce(function(a,x){return a+(x.k==='in'?x.a:-x.a)},0)}
 function savHtml(){
   var t=S.sav.reduce(function(a,s){return a+sb(s)},0);
@@ -185,7 +214,7 @@ function delPay(i,p){var d=dbt(i);d.pay=d.pay.filter(function(x){return x.id!==p
 function delDebt(i){if(confirm('حذف هذا الدين وسجله؟')){S.debts=S.debts.filter(function(d){return d.id!==i});save();draw()}}
 function bk(){document.getElementById('md').innerHTML='<div class="m" onclick="if(event.target===this)cl()"><div><b>نسخ احتياطي ونقل البيانات</b><br><br><label>1) تصدير: انسخ الكود وابعثه لنفسك (واتساب/تلغرام)</label><textarea id="ex" readonly rows="3">'+e(JSON.stringify(S))+'</textarea><button class="b" style="width:100%;padding:12px" onclick="cp()">نسخ الكود</button><br><br><label>2) استيراد: الصق الكود هنا</label><textarea id="im" rows="3"></textarea><button class="b" style="width:100%;padding:12px" onclick="imp()">استيراد (يستبدل البيانات الحالية)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>'}
 function cp(){var t=document.getElementById('ex');t.select();t.setSelectionRange(0,t.value.length);try{navigator.clipboard.writeText(t.value)}catch(x){try{document.execCommand('copy')}catch(y){}}alert('تم النسخ')}
-function imp(){try{var o=JSON.parse(document.getElementById('im').value.trim());if(!o||!Array.isArray(o.inc)||!Array.isArray(o.cats))throw 0;if(confirm('راح تنستبدل البيانات الحالية. متأكد؟')){S=o;if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];save();cl();draw()}}catch(x){alert('الكود غير صحيح')}}
+function imp(){try{var o=JSON.parse(document.getElementById('im').value.trim());if(!o||!Array.isArray(o.inc)||!Array.isArray(o.cats))throw 0;if(confirm('راح تنستبدل البيانات الحالية. متأكد؟')){S=o;if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];if(!S.ins)S.ins=[];save();cl();draw()}}catch(x){alert('الكود غير صحيح')}}
 draw();
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){})}catch(x){}
 </script>
