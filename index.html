@@ -52,7 +52,7 @@ button{font:inherit;cursor:pointer}
 .lg>div{width:100%;max-width:400px;background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:20px}
 .lg input{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit;margin:4px 0 10px;direction:ltr;text-align:left}
 .lg label{font-size:13px;color:var(--mu)}
-#lerr{color:var(--rd);font-size:13px;min-height:18px;margin-bottom:8px}
+#lerr,#lerr2{color:var(--rd);font-size:13px;min-height:18px;margin-bottom:8px}
 #st{font-size:12px;color:var(--mu)}
 </style>
 </head>
@@ -65,15 +65,30 @@ button{font:inherit;cursor:pointer}
 </div>
 <div class="end"><button onclick="endMonth()">إنهاء الشهر</button></div>
 <div id="md"></div>
-<div class="lg" id="lg"><div>
+<div class="lg" id="lg">
+<div id="pl">
 <h1 style="text-align:center">💰 مصروفي</h1>
+<div style="text-align:center;font-weight:700;margin-bottom:12px">تسجيل الدخول</div>
 <label>الإيميل</label><input id="em" type="email" autocomplete="email">
-<label>كلمة المرور (6 أحرف أو أكثر)</label><input id="pw" type="password" autocomplete="current-password">
+<label>كلمة المرور</label><input id="pw" type="password" autocomplete="current-password">
 <div id="lerr"></div>
-<button class="b" style="width:100%;padding:12px" onclick="doLogin()">تسجيل دخول</button><br><br>
-<button class="g" style="width:100%" onclick="doSignup()">إنشاء حساب جديد</button><br><br>
+<button class="b" style="width:100%;padding:12px" onclick="doLogin()">دخول</button><br><br>
 <button class="x" style="width:100%" onclick="doReset()">نسيت كلمة المرور؟</button>
-</div></div>
+<hr style="border:0;border-top:1px dashed var(--bd);margin:12px 0">
+<div class="mu" style="text-align:center;margin-bottom:8px">ما عندك حساب؟</div>
+<button class="g" style="width:100%" onclick="showSignup()">إنشاء حساب جديد</button>
+</div>
+<div id="ps" style="display:none">
+<h1 style="text-align:center">💰 مصروفي</h1>
+<div style="text-align:center;font-weight:700;margin-bottom:12px">إنشاء حساب جديد</div>
+<label>الإيميل</label><input id="em2" type="email" autocomplete="email">
+<label>كلمة المرور (6 أحرف أو أكثر)</label><input id="pw2" type="password" autocomplete="new-password">
+<label>أعد كتابة كلمة المرور</label><input id="pw3" type="password" autocomplete="new-password">
+<div id="lerr2"></div>
+<button class="b" style="width:100%;padding:12px" onclick="doSignup()">إنشاء الحساب</button><br><br>
+<button class="g" style="width:100%" onclick="showLogin()">رجوع لتسجيل الدخول</button>
+</div>
+</div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -121,14 +136,29 @@ auth.onAuthStateChanged(function(u){
     draw();setSt('⏳');startSync();
   }else{
     USER=null;S={inc:[],cats:[],debts:[],sav:[],ins:[]};setSt('');
-    document.getElementById('lg').style.display='flex';
+    document.getElementById('lg').style.display='flex';showLogin();
   }
 });
 function ferr(c){return({'auth/invalid-email':'الإيميل غير صحيح','auth/missing-password':'اكتب كلمة المرور','auth/weak-password':'كلمة المرور ضعيفة (6 أحرف على الأقل)','auth/email-already-in-use':'هذا الإيميل مسجّل من قبل، سجّل دخول','auth/invalid-credential':'الإيميل أو كلمة المرور غلط','auth/wrong-password':'الإيميل أو كلمة المرور غلط','auth/user-not-found':'الإيميل أو كلمة المرور غلط','auth/too-many-requests':'محاولات كثيرة، انتظر شوي وجرّب','auth/network-request-failed':'ما كو اتصال بالإنترنت'})[c]||('خطأ: '+c)}
-function cred(){return[document.getElementById('em').value.trim(),document.getElementById('pw').value]}
-function doLogin(){var c=cred();document.getElementById('lerr').textContent='';auth.signInWithEmailAndPassword(c[0],c[1]).catch(function(x){document.getElementById('lerr').textContent=ferr(x.code)})}
-function doSignup(){var c=cred();document.getElementById('lerr').textContent='';auth.createUserWithEmailAndPassword(c[0],c[1]).catch(function(x){document.getElementById('lerr').textContent=ferr(x.code)})}
-function doReset(){var m=document.getElementById('em').value.trim();if(!m){document.getElementById('lerr').textContent='اكتب الإيميل أول';return}auth.sendPasswordResetEmail(m).then(function(){document.getElementById('lerr').textContent='انبعث رابط إعادة التعيين لإيميلك'}).catch(function(x){document.getElementById('lerr').textContent=ferr(x.code)})}
+function clean(v){return v.replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff\s]/g,'').toLowerCase()}
+function showSignup(){document.getElementById('pl').style.display='none';document.getElementById('ps').style.display='block';document.getElementById('lerr2').textContent='';document.getElementById('em2').focus()}
+function showLogin(){document.getElementById('ps').style.display='none';document.getElementById('pl').style.display='block';document.getElementById('lerr').textContent=''}
+function doLogin(){
+  var m=clean(document.getElementById('em').value),p=document.getElementById('pw').value,er=document.getElementById('lerr');
+  er.textContent='';
+  if(!m){er.textContent='اكتب الإيميل';return}
+  if(!p){er.textContent='اكتب كلمة المرور';return}
+  auth.signInWithEmailAndPassword(m,p).catch(function(x){er.textContent=ferr(x.code)})
+}
+function doSignup(){
+  var m=clean(document.getElementById('em2').value),p=document.getElementById('pw2').value,p2=document.getElementById('pw3').value,er=document.getElementById('lerr2');
+  er.textContent='';
+  if(!m){er.textContent='اكتب الإيميل';return}
+  if(p.length<6){er.textContent='كلمة المرور لازم 6 أحرف أو أكثر';return}
+  if(p!==p2){er.textContent='كلمتا المرور غير متطابقتين';return}
+  auth.createUserWithEmailAndPassword(m,p).catch(function(x){er.textContent=ferr(x.code)})
+}
+function doReset(){var m=clean(document.getElementById('em').value);if(!m){document.getElementById('lerr').textContent='اكتب الإيميل أول';return}auth.sendPasswordResetEmail(m).then(function(){document.getElementById('lerr').textContent='انبعث رابط إعادة التعيين لإيميلك'}).catch(function(x){document.getElementById('lerr').textContent=ferr(x.code)})}
 function logout(){if(confirm('تسجيل خروج؟')){clearTimeout(tm);if(USER&&S.ts)push();auth.signOut()}}
 function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function f(n){var s=String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g,',');return (n<0?'-':'')+s}
