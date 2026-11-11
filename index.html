@@ -18,6 +18,7 @@ h1{font-size:20px;margin:6px 0 12px}
 .sum b{font-size:16px}
 .tabs{display:flex;gap:6px;margin-bottom:12px}
 .tabs button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:12px;font:inherit;font-weight:600}
+.tabs button{padding:10px 2px;font-size:14px}
 .tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .c{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:12px;margin-bottom:10px}
 .r{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -46,7 +47,7 @@ button{font:inherit;cursor:pointer}
 <div class="w">
 <div class="r"><h1>💰 مصروفي</h1><button class="g" onclick="bk()">نسخ احتياطي</button></div>
 <div class="sum" id="sum"></div>
-<div class="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button></div>
+<div class="tabs"><button id="t1" onclick="tab(1)">الدخل</button><button id="t2" onclick="tab(2)">المصروف</button><button id="t3" onclick="tab(3)">الديون</button><button id="t4" onclick="tab(4)">الحصالة</button></div>
 <div id="main"></div>
 </div>
 <div class="end"><button onclick="endMonth()">إنهاء الشهر</button></div>
@@ -54,6 +55,7 @@ button{font:inherit;cursor:pointer}
 <script>
 var S={inc:[],cats:[]},T=2,open={};
 try{var l=localStorage.getItem('masroof');if(l)S=JSON.parse(l)}catch(e){}
+if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];
 function save(){try{localStorage.setItem('masroof',JSON.stringify(S))}catch(e){}}
 function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function f(n){var s=String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g,',');return (n<0?'-':'')+s}
@@ -82,11 +84,13 @@ function draw(){
   document.getElementById('sum').innerHTML='<div><small>الدخل</small><b>'+f(i)+'</b></div><div><small>انصرف</small><b>'+f(s)+'</b></div><div><small>الباقي</small><b class="'+(r<0?'neg':'pos')+'">'+f(r)+'</b></div>';
   document.getElementById('t1').className=T==1?'on':'';
   document.getElementById('t2').className=T==2?'on':'';
+  document.getElementById('t3').className=T==3?'on':'';
+  document.getElementById('t4').className=T==4?'on':'';
   var h='';
   if(T==1){
     S.inc.forEach(function(x){h+='<div class="c r"><div><b>'+e(x.n)+'</b><div class="mu">'+f(x.a)+'</div></div><button class="x" onclick="delInc(\''+x.id+'\')">حذف</button></div>'});
     h+='<button class="add" onclick="addInc()">+ إضافة مصدر دخل</button>';
-  }else{
+  }else if(T==3){h=debtsHtml()}else if(T==4){h=savHtml()}else{
     var p=planned();
     h+='<div class="mu" style="margin-bottom:8px">المخطط له: '+f(p)+' من '+f(i)+' (الدخل). الخصم من الباقي يصير فقط لما تسجل "صرفت".</div>';
     S.cats.forEach(function(c){
@@ -128,9 +132,51 @@ function endMonth(){
   '<button class="b" style="width:100%;padding:12px" onclick="newMonth()">بدء شهر جديد (يصفّر المصروف)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>';
 }
 function newMonth(){if(confirm('راح يتصفّر سجل المصروف وتبقى مصادر الدخل والأقسام. متأكد؟')){S.cats.forEach(function(c){c.ex=[]});save();cl();draw()}}
+function sb(s){return s.tx.reduce(function(a,x){return a+(x.k==='in'?x.a:-x.a)},0)}
+function savHtml(){
+  var t=S.sav.reduce(function(a,s){return a+sb(s)},0);
+  var h='<div class="sum" style="grid-template-columns:1fr"><div><small>إجمالي المدخرات</small><b class="pos">'+f(t)+'</b></div></div><div class="mu" style="margin-bottom:8px">المدخرات منفصلة عن الدخل والمصروف الشهري.</div>';
+  S.sav.forEach(function(s){
+    var b=sb(s);
+    h+='<div class="c"><div class="r"><b>🐷 '+e(s.n)+'</b><span class="big pos">'+f(b)+'</span></div>';
+    if(s.g)h+='<div class="bar"><i style="width:'+Math.max(0,Math.min(100,b/s.g*100))+'%"></i></div><div class="mu">الهدف: '+f(s.g)+(b>=s.g?' ✓ تحقق الهدف':' · باقي '+f(s.g-b))+'</div>';
+    h+='<div class="r" style="margin-top:8px"><span><button class="b" onclick="savTx(\''+s.id+'\',\'in\')">إيداع</button> <button class="g" onclick="savTx(\''+s.id+'\',\'out\')">سحب</button> <button class="g" onclick="open[\''+s.id+'\']=!open[\''+s.id+'\'];draw()">السجل ('+s.tx.length+')</button></span><button class="x" onclick="delSav(\''+s.id+'\')">حذف</button></div>';
+    if(open[s.id])s.tx.slice().reverse().forEach(function(x){h+='<div class="sub r"><span>'+(x.k==='in'?'＋ ':'－ ')+f(x.a)+'</span><button class="x" onclick="delTx(\''+s.id+'\',\''+x.id+'\')">تراجع</button></div>'});
+    h+='</div>';
+  });
+  h+='<button class="add" onclick="addSav()">+ حصالة جديدة</button>';
+  return h;
+}
+function sv(i){return S.sav.filter(function(s){return s.id===i})[0]}
+function addSav(){ask('حصالة جديدة',[['الاسم (مثلاً سفر، طوارئ)'],['الهدف (اختياري)','n',false]],function(v){S.sav.push({id:id(),n:v[0],g:v[1]||0,tx:[]});save();draw()})}
+function savTx(i,k){var s=sv(i);ask(k==='in'?'إيداع بالحصالة':'سحب من الحصالة',[['المبلغ','n']],function(v){if(k==='out'&&v[0]>sb(s)){alert('المبلغ أكبر من رصيد الحصالة');return}s.tx.push({id:id(),a:v[0],k:k});save();draw()})}
+function delTx(i,t){var s=sv(i),old=s.tx;s.tx=old.filter(function(x){return x.id!==t});if(sb(s)<0){s.tx=old;alert('ما يصير التراجع لأن الرصيد يصير بالسالب');return}save();draw()}
+function delSav(i){if(confirm('حذف الحصالة وسجلها؟')){S.sav=S.sav.filter(function(s){return s.id!==i});save();draw()}}
+function dr(d){return d.a-d.pay.reduce(function(a,x){return a+x.a},0)}
+function debtsHtml(){
+  var m=0,y=0;S.debts.forEach(function(d){if(d.t==='lo')m+=dr(d);else y+=dr(d)});
+  var h='<div class="sum" style="grid-template-columns:1fr 1fr"><div><small>أطلبهم</small><b class="pos">'+f(m)+'</b></div><div><small>يطلبوني</small><b class="neg">'+f(y)+'</b></div></div>';
+  S.debts.forEach(function(d){
+    var r=dr(d),p=d.a-r,lo=d.t==='lo';
+    h+='<div class="c"><div class="r"><b>'+e(d.n)+'</b><span class="mu">'+(lo?'أطلبه':'يطلبني')+'</span></div>';
+    if(d.note)h+='<div class="mu">'+e(d.note)+'</div>';
+    h+='<div class="bar"><i class="'+(lo?'':'o')+'" style="width:'+(d.a?Math.min(100,p/d.a*100):0)+'%"></i></div>';
+    h+='<div class="r"><span class="mu">'+(lo?'استلمت':'سددت')+': '+f(p)+' من '+f(d.a)+'</span><b class="'+(r<=0?'pos':(lo?'pos':'neg'))+'">'+(r<=0?'✓ منتهي':'المتبقي '+f(r))+'</b></div>';
+    h+='<div class="r" style="margin-top:8px"><span>'+(r>0?'<button class="b" onclick="payDebt(\''+d.id+'\')">'+(lo?'استلمت دفعة':'سددت دفعة')+'</button> ':'')+'<button class="g" onclick="open[\''+d.id+'\']=!open[\''+d.id+'\'];draw()">السجل ('+d.pay.length+')</button></span><button class="x" onclick="delDebt(\''+d.id+'\')">حذف</button></div>';
+    if(open[d.id])d.pay.slice().reverse().forEach(function(x){h+='<div class="sub r"><span>'+f(x.a)+'</span><button class="x" onclick="delPay(\''+d.id+'\',\''+x.id+'\')">تراجع</button></div>'});
+    h+='</div>';
+  });
+  h+='<button class="add" style="margin-bottom:8px" onclick="addDebt(\'lo\')">+ شخص أطلبه (يدينني)</button><button class="add" onclick="addDebt(\'ow\')">+ شخص يطلبني (أدين له)</button>';
+  return h;
+}
+function addDebt(t){ask(t==='lo'?'شخص أطلبه':'شخص يطلبني',[['اسم الشخص'],['المبلغ','n'],['ملاحظة (اختياري)','t',false]],function(v){S.debts.push({id:id(),n:v[0],a:v[1],t:t,note:v[2],pay:[]});save();draw()})}
+function dbt(i){return S.debts.filter(function(d){return d.id===i})[0]}
+function payDebt(i){var d=dbt(i);ask(d.t==='lo'?'دفعة مستلمة':'دفعة مسددة',[['المبلغ','n']],function(v){d.pay.push({id:id(),a:v[0]});save();draw()})}
+function delPay(i,p){var d=dbt(i);d.pay=d.pay.filter(function(x){return x.id!==p});save();draw()}
+function delDebt(i){if(confirm('حذف هذا الدين وسجله؟')){S.debts=S.debts.filter(function(d){return d.id!==i});save();draw()}}
 function bk(){document.getElementById('md').innerHTML='<div class="m" onclick="if(event.target===this)cl()"><div><b>نسخ احتياطي ونقل البيانات</b><br><br><label>1) تصدير: انسخ الكود وابعثه لنفسك (واتساب/تلغرام)</label><textarea id="ex" readonly rows="3">'+e(JSON.stringify(S))+'</textarea><button class="b" style="width:100%;padding:12px" onclick="cp()">نسخ الكود</button><br><br><label>2) استيراد: الصق الكود هنا</label><textarea id="im" rows="3"></textarea><button class="b" style="width:100%;padding:12px" onclick="imp()">استيراد (يستبدل البيانات الحالية)</button><br><br><button class="g" style="width:100%" onclick="cl()">إغلاق</button></div></div>'}
 function cp(){var t=document.getElementById('ex');t.select();t.setSelectionRange(0,t.value.length);try{navigator.clipboard.writeText(t.value)}catch(x){try{document.execCommand('copy')}catch(y){}}alert('تم النسخ')}
-function imp(){try{var o=JSON.parse(document.getElementById('im').value.trim());if(!o||!Array.isArray(o.inc)||!Array.isArray(o.cats))throw 0;if(confirm('راح تنستبدل البيانات الحالية. متأكد؟')){S=o;save();cl();draw()}}catch(x){alert('الكود غير صحيح')}}
+function imp(){try{var o=JSON.parse(document.getElementById('im').value.trim());if(!o||!Array.isArray(o.inc)||!Array.isArray(o.cats))throw 0;if(confirm('راح تنستبدل البيانات الحالية. متأكد؟')){S=o;if(!S.debts)S.debts=[];if(!S.sav)S.sav=[];save();cl();draw()}}catch(x){alert('الكود غير صحيح')}}
 draw();
 </script>
 </body>
